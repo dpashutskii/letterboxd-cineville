@@ -102,16 +102,30 @@ async function getCinevilleFilm(slug, buildId, locale) {
 }
 
 // ---- OMDb (IMDb rating + the all-important imdbID) ----
+async function omdbFetch(params, key) {
+  const qs = Object.entries(params)
+    .map(([k, v]) => `${k}=${encodeURIComponent(v)}`)
+    .join("&");
+  const r = await fetch(`https://www.omdbapi.com/?apikey=${encodeURIComponent(key)}&${qs}`);
+  if (!r.ok) return null;
+  const j = await r.json();
+  return j.Response === "True" ? j : null;
+}
+
 async function getOmdb(title, year, key) {
-  const base = `https://www.omdbapi.com/?apikey=${encodeURIComponent(key)}&type=movie`;
-  const t = `&t=${encodeURIComponent(title)}`;
-  let r = await fetch(base + t + (year ? `&y=${year}` : ""));
-  let j = r.ok ? await r.json() : null;
-  if ((!j || j.Response !== "True") && year) {
-    r = await fetch(base + t); // retry without year
-    j = r.ok ? await r.json() : null;
+  // Title-only first: cineville's NL release year is often off-by-one from
+  // IMDb's, and &y= is a hard filter that would reject the correct film.
+  let j = await omdbFetch({ type: "movie", t: title }, key);
+  // Only fall back to a year-filtered query if the title match is wildly off
+  // (e.g. a same-named remake decades apart).
+  if (j && year && j.Year) {
+    const y = parseInt(j.Year, 10);
+    if (!Number.isNaN(y) && Math.abs(y - year) > 1) {
+      const j2 = await omdbFetch({ type: "movie", t: title, y: year }, key);
+      if (j2) j = j2;
+    }
   }
-  if (!j || j.Response !== "True") return null;
+  if (!j) return null;
   return {
     imdbID: j.imdbID || null,
     rating: j.imdbRating && j.imdbRating !== "N/A" ? j.imdbRating : null,

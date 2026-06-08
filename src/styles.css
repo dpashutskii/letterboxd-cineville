@@ -7,42 +7,51 @@
   vertical-align: middle;
   font-family: ui-sans-serif, system-ui, -apple-system, sans-serif;
   white-space: nowrap;
+  /* lift the whole badge above cineville's stretched-link overlay */
+  position: relative;
+  z-index: 50;
 }
 
-/* clickable rating pills */
+/* Tailwind-ish rating pills: tiny rounding, subtle ring, snug padding */
 .cvr-chip {
   display: inline-flex;
   align-items: center;
   gap: 4px;
-  padding: 3px 9px;
-  border-radius: 999px;
-  font-size: 12.5px;
-  font-weight: 700;
-  line-height: 1;
+  padding: 2px 8px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.45;
   text-decoration: none;
   cursor: pointer;
-  transition: transform 0.12s ease, box-shadow 0.12s ease, filter 0.12s ease;
+  /* must sit above cineville's full-card click overlay to be clickable */
+  position: relative;
+  z-index: 50;
+  pointer-events: auto;
+  border: 1px solid transparent;
+  transition: box-shadow 0.12s ease, filter 0.12s ease, transform 0.12s ease;
 }
 
 .cvr-chip:hover {
   transform: translateY(-1px);
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
-  filter: brightness(0.97);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.18);
+  filter: brightness(0.98);
 }
 
 .cvr-lb {
-  background: #e7f9ee;
-  color: #00a430;
+  background: #e7f6ec;
+  color: #067a36;
+  border-color: #bfe6cc;
 }
 
 .cvr-imdb {
   background: #f5c518; /* IMDb yellow */
-  color: #111;
+  color: #1a1a1a;
+  border-color: #dcaf06;
 }
 
 /* loading + empty states stay subtle */
 .cvr-badge.cvr-loading {
-  margin-left: 10px;
   color: #aaa;
   font-weight: 700;
   letter-spacing: 1px;
