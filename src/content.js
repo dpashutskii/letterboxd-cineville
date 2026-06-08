@@ -1,9 +1,13 @@
 // Content script: runs on every cineville.nl page.
-// 1. Finds links to film detail pages (works on /showtimes, /films, detail pages).
-// 2. Reads the Next.js buildId from the page's __NEXT_DATA__ blob (DOM, not page JS).
-// 3. Asks the service worker for ratings per film slug and injects a small badge.
+// - Listing/showtimes pages: badge each film link (+ show the release year,
+//   which cineville hides on the showtimes page).
+// - Film detail pages: place one badge next to the title and add the Letterboxd
+//   synopsis, instead of spamming the showtimes sidebar.
+// Reads the Next.js buildId from the page's __NEXT_DATA__ blob (DOM, not page JS)
+// and asks the service worker for ratings per film slug.
 
 const LOCALE_RE = /\/(en-GB|nl-NL)(?:\/|$)/;
+const DETAIL_RE = /\/films\/([^/?#]+)\/?$/;
 const doneLinks = new WeakSet();
 
 function getBuildId() {
@@ -27,6 +31,18 @@ function slugFromHref(href) {
   return m ? m[1] : null;
 }
 
+function currentDetailSlug() {
+  const m = location.pathname.match(DETAIL_RE);
+  return m ? m[1] : null;
+}
+
+function requestRatings(slug, cb) {
+  chrome.runtime.sendMessage({ type: "getRatings", slug, buildId, locale }, (resp) => {
+    if (chrome.runtime.lastError || !resp || resp.error) return cb(null);
+    cb(resp);
+  });
+}
+
 function makeBadge() {
   const b = document.createElement("span");
   b.className = "cvr-badge cvr-loading";
@@ -48,44 +64,49 @@ function chip(kind, label, href, title) {
   return a;
 }
 
-function render(badge, data) {
+function render(badge, data, opts) {
+  opts = opts || {};
   badge.classList.remove("cvr-loading");
   badge.textContent = "";
-  const chips = [];
+  const els = [];
+
+  if (opts.withYear && data && data.year) {
+    const y = document.createElement("span");
+    y.className = "cvr-year";
+    y.textContent = data.year;
+    els.push(y);
+  }
   if (data && data.lb && data.lb.rating) {
     const count = data.lb.count ? Number(data.lb.count).toLocaleString() : "?";
-    chips.push(
-      chip(
-        "lb",
-        `★ ${data.lb.rating}`,
-        data.lb.url,
-        `Letterboxd — ${data.lb.rating}/5 from ${count} ratings`
-      )
+    els.push(
+      chip("lb", `★ ${data.lb.rating}`, data.lb.url,
+        `Letterboxd — ${data.lb.rating}/5 from ${count} ratings`)
     );
   }
   if (data && data.imdb && data.imdb.rating) {
-    chips.push(
-      chip(
-        "imdb",
-        `IMDb ${data.imdb.rating}`,
-        data.imdb.url,
-        `IMDb — ${data.imdb.rating}/10`
-      )
+    els.push(
+      chip("imdb", `IMDb ${data.imdb.rating}`, data.imdb.url,
+        `IMDb — ${data.imdb.rating}/10`)
     );
   }
-  if (chips.length === 0) {
+
+  if (els.length === 0) {
     badge.classList.add("cvr-empty");
     badge.textContent = "–";
     badge.title = "No Letterboxd/IMDb rating found";
     return;
   }
-  chips.forEach((c) => badge.appendChild(c));
+  els.forEach((e) => badge.appendChild(e));
 }
 
+// ---- listing / showtimes pages ----
 function process(link) {
   if (doneLinks.has(link)) return;
   const slug = slugFromHref(link.getAttribute("href"));
   if (!slug) return;
+  // On a detail page the main film is handled by the title badge — skip its
+  // showtimes-sidebar links to avoid duplicate badges.
+  if (slug === currentDetailSlug()) return;
   doneLinks.add(link);
 
   // Avoid two badges for the same film in one card (poster link + title link).
@@ -96,14 +117,13 @@ function process(link) {
 
   const badge = makeBadge();
   link.insertAdjacentElement("afterend", badge);
-
-  chrome.runtime.sendMessage({ type: "getRatings", slug, buildId, locale }, (resp) => {
-    if (chrome.runtime.lastError || !resp || resp.error) {
+  requestRatings(slug, (data) => {
+    if (!data) {
       badge.remove();
       card.__cvrSlugs.delete(slug);
       return;
     }
-    render(badge, resp);
+    render(badge, data, { withYear: true });
   });
 }
 
@@ -111,9 +131,44 @@ function scan(root) {
   (root || document).querySelectorAll('a[href*="/films/"]').forEach(process);
 }
 
-scan();
+// ---- film detail page ----
+function injectDetailBadge() {
+  const slug = currentDetailSlug();
+  if (!slug) return;
+  if (document.querySelector(".cvr-detail")) return; // already done for this page
+  const h1 = document.querySelector("h1");
+  if (!h1) return; // title not rendered yet; observer will retry
+
+  const wrap = document.createElement("div");
+  wrap.className = "cvr-detail";
+  const badge = makeBadge();
+  const desc = document.createElement("p");
+  desc.className = "cvr-desc";
+  wrap.appendChild(badge);
+  wrap.appendChild(desc);
+  h1.insertAdjacentElement("afterend", wrap);
+
+  requestRatings(slug, (data) => {
+    render(badge, data, { withYear: false });
+    const text = data && data.lb && data.lb.description;
+    if (text) desc.textContent = text;
+    else desc.remove();
+  });
+}
+
+// ---- run + react to SPA navigation ----
+function tick() {
+  if (currentDetailSlug()) injectDetailBadge();
+  else scan();
+}
+
+tick();
 
 const observer = new MutationObserver((mutations) => {
+  if (currentDetailSlug()) {
+    injectDetailBadge();
+    return;
+  }
   for (const m of mutations) {
     for (const node of m.addedNodes) {
       if (node.nodeType !== 1) continue;
@@ -123,3 +178,20 @@ const observer = new MutationObserver((mutations) => {
   }
 });
 observer.observe(document.documentElement, { childList: true, subtree: true });
+
+// Next.js client-side navigation doesn't reload the page; re-run on URL change.
+let lastPath = location.pathname;
+function onNav() {
+  if (location.pathname === lastPath) return;
+  lastPath = location.pathname;
+  setTimeout(tick, 250);
+}
+["pushState", "replaceState"].forEach((fn) => {
+  const orig = history[fn];
+  history[fn] = function () {
+    const r = orig.apply(this, arguments);
+    onNav();
+    return r;
+  };
+});
+window.addEventListener("popstate", onNav);

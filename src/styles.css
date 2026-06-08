@@ -50,6 +50,47 @@
   border-color: #dcaf06;
 }
 
+/* release year (cineville hides it on the showtimes page) */
+.cvr-year {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 7px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #555;
+  background: #ececed;
+  border: 1px solid #dedede;
+}
+
+/* detail page: badge + synopsis under the title */
+.cvr-detail {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin: 12px 0 6px;
+  position: relative;
+  z-index: 50;
+}
+
+.cvr-detail .cvr-badge {
+  margin-left: 0;
+}
+
+.cvr-desc {
+  max-width: 640px;
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.55;
+  color: #444;
+}
+
+.cvr-desc::before {
+  content: "Letterboxd · ";
+  font-weight: 700;
+  color: #067a36;
+}
+
 /* loading + empty states stay subtle */
 .cvr-badge.cvr-loading {
   color: #aaa;

@@ -58,6 +58,18 @@ function cleanTitle(t) {
   return (t || "").replace(/\s*\((?:19|20)\d{2}\)\s*$/, "").trim();
 }
 
+function decodeEntities(s) {
+  return (s || "")
+    .replace(/&amp;/g, "&")
+    .replace(/&quot;|&#34;/g, '"')
+    .replace(/&apos;|&#0?39;|&#x27;/g, "'")
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">")
+    .replace(/&hellip;|&#8230;/g, "…")
+    .replace(/&nbsp;|&#160;/g, " ")
+    .replace(/&#(\d+);/g, (_, n) => String.fromCharCode(+n));
+}
+
 function slugify(t) {
   return (t || "")
     .toLowerCase()
@@ -121,8 +133,11 @@ async function getOmdb(title, year, key) {
   if (j && year && j.Year) {
     const y = parseInt(j.Year, 10);
     if (!Number.isNaN(y) && Math.abs(y - year) > 1) {
+      // Title-only matched a different film (e.g. an older same-named one).
+      // Try to pin the exact year; if that finds nothing, reject the match
+      // rather than return the wrong film.
       const j2 = await omdbFetch({ type: "movie", t: title, y: year }, key);
-      if (j2) j = j2;
+      j = j2 || null;
     }
   }
   if (!j) return null;
@@ -148,21 +163,36 @@ async function lbFilmFromUrl(url) {
   } catch (_) {
     return null;
   }
+  // release year, for sanity-checking matches
+  let year = null;
+  const sd =
+    data.releasedEvent &&
+    data.releasedEvent[0] &&
+    data.releasedEvent[0].startDate;
+  if (sd) {
+    const y = parseInt(String(sd).slice(0, 4), 10);
+    if (!Number.isNaN(y)) year = y;
+  }
+  // synopsis lives in the og:description meta, not the JSON-LD
+  let description = null;
+  const dm = html.match(/<meta property="og:description" content="([^"]*)"/);
+  if (dm) description = decodeEntities(dm[1]).trim() || null;
+
   const ar = data.aggregateRating;
-  if (!ar || !ar.ratingValue) return null;
-  return {
-    rating: Math.round(ar.ratingValue * 100) / 100,
-    count: ar.ratingCount,
-    url: filmUrl,
-  };
+  const rating = ar && ar.ratingValue ? Math.round(ar.ratingValue * 100) / 100 : null;
+  if (!rating && !description) return null;
+  return { rating, count: ar ? ar.ratingCount : null, url: filmUrl, year, description };
 }
 
 async function lbFromImdb(imdbId) {
+  // id-based, so authoritative — no year check needed
   return lbFilmFromUrl(`https://letterboxd.com/imdb/${imdbId}/`);
 }
 
-// Key-free fallback: guess the slug from the title. Best-effort only.
-async function lbFromTitleGuess(title) {
+// Key-free fallback: guess the slug from the title. Best-effort, so we reject
+// any candidate whose release year is far from cineville's (avoids matching an
+// older film with the same name).
+async function lbFromTitleGuess(title, year) {
   const base = slugify(title);
   if (!base) return null;
   const cands = base.startsWith("the-")
@@ -172,7 +202,10 @@ async function lbFromTitleGuess(title) {
     const d = await lbFilmFromUrl(`https://letterboxd.com/film/${c}/`).catch(
       () => null
     );
-    if (d && d.rating) return d;
+    if (d && d.rating) {
+      if (year && d.year && Math.abs(d.year - year) > 1) continue; // wrong film
+      return d;
+    }
   }
   return null;
 }
@@ -197,7 +230,7 @@ async function handle(msg) {
 
     let lb = null;
     if (omdb && omdb.imdbID) lb = await lbFromImdb(omdb.imdbID).catch(() => null);
-    if (!lb) lb = await lbFromTitleGuess(title).catch(() => null);
+    if (!lb) lb = await lbFromTitleGuess(title, year).catch(() => null);
 
     const imdb =
       enableImdb && omdb && omdb.rating
