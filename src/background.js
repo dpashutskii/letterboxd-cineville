@@ -1,8 +1,11 @@
 // Service worker: does all cross-origin work (content scripts can't, due to CORS).
 // Flow per film slug:
 //   1. Resolve canonical title + year from cineville's own Next.js data endpoint.
-//   2. Look up the Letterboxd rating (scrape JSON-LD) and IMDb rating (OMDb API).
-//   3. Cache the result in chrome.storage.local.
+//   2. Resolve the film's IMDb id via OMDb (also gives the IMDb rating).
+//   3. Letterboxd: jump straight to the film page via letterboxd.com/imdb/{id}/
+//      (the /search/ endpoint is bot-blocked, so we never use it). Falls back to a
+//      slugified title guess when no OMDb key is configured.
+//   4. Cache the result in chrome.storage.local.
 
 const TTL_OK = 7 * 24 * 60 * 60 * 1000; // 7 days for hits
 const TTL_EMPTY = 24 * 60 * 60 * 1000; // 1 day for misses (so we retry)
@@ -50,11 +53,23 @@ async function getSettings() {
   return { imdbKey: o.imdbKey || "", enableImdb: o.enableImdb !== false };
 }
 
-// ---- cineville: slug -> {title, year} ----
+// ---- helpers ----
 function cleanTitle(t) {
   return (t || "").replace(/\s*\((?:19|20)\d{2}\)\s*$/, "").trim();
 }
 
+function slugify(t) {
+  return (t || "")
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[̀-ͯ]/g, "") // strip accents
+    .replace(/['’]/g, "")
+    .replace(/&/g, " and ")
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+}
+
+// ---- cineville: slug -> {title, year} ----
 async function getCinevilleFilm(slug, buildId, locale) {
   locale = locale || "en-GB";
   if (buildId) {
@@ -86,25 +101,29 @@ async function getCinevilleFilm(slug, buildId, locale) {
   return { title: slug.replace(/-/g, " "), year: null };
 }
 
-// ---- Letterboxd (scrape) ----
-async function lbSearchSlug(title) {
-  const r = await fetch(
-    `https://letterboxd.com/search/films/${encodeURIComponent(title)}/`,
-    { credentials: "omit" }
-  );
-  if (!r.ok) return null;
-  const html = await r.text();
-  const m =
-    html.match(/data-film-slug="([^"]+)"/) ||
-    html.match(/href="\/film\/([^/"?#]+)\//);
-  return m ? m[1] : null;
+// ---- OMDb (IMDb rating + the all-important imdbID) ----
+async function getOmdb(title, year, key) {
+  const base = `https://www.omdbapi.com/?apikey=${encodeURIComponent(key)}&type=movie`;
+  const t = `&t=${encodeURIComponent(title)}`;
+  let r = await fetch(base + t + (year ? `&y=${year}` : ""));
+  let j = r.ok ? await r.json() : null;
+  if ((!j || j.Response !== "True") && year) {
+    r = await fetch(base + t); // retry without year
+    j = r.ok ? await r.json() : null;
+  }
+  if (!j || j.Response !== "True") return null;
+  return {
+    imdbID: j.imdbID || null,
+    rating: j.imdbRating && j.imdbRating !== "N/A" ? j.imdbRating : null,
+    votes: j.imdbVotes,
+  };
 }
 
-async function lbFilm(slug) {
-  const r = await fetch(`https://letterboxd.com/film/${slug}/`, {
-    credentials: "omit",
-  });
+// ---- Letterboxd (scrape JSON-LD from a film page) ----
+async function lbFilmFromUrl(url) {
+  const r = await fetch(url, { credentials: "omit" });
   if (!r.ok) return null;
+  const filmUrl = r.url || url; // canonical url after any redirect
   const html = await r.text();
   const m = html.match(/<script type="application\/ld\+json">([\s\S]*?)<\/script>/);
   if (!m) return null;
@@ -115,48 +134,33 @@ async function lbFilm(slug) {
   } catch (_) {
     return null;
   }
-  const url = `https://letterboxd.com/film/${slug}/`;
   const ar = data.aggregateRating;
-  if (!ar || !ar.ratingValue) return { slug, rating: null, url };
+  if (!ar || !ar.ratingValue) return null;
   return {
-    slug,
     rating: Math.round(ar.ratingValue * 100) / 100,
     count: ar.ratingCount,
-    url,
+    url: filmUrl,
   };
 }
 
-async function getLetterboxd(title) {
-  const slug = await lbSearchSlug(title);
-  if (!slug) return null;
-  return await lbFilm(slug);
+async function lbFromImdb(imdbId) {
+  return lbFilmFromUrl(`https://letterboxd.com/imdb/${imdbId}/`);
 }
 
-// ---- IMDb via OMDb ----
-function imdbObj(j) {
-  const rating = j.imdbRating && j.imdbRating !== "N/A" ? j.imdbRating : null;
-  return {
-    rating,
-    votes: j.imdbVotes,
-    id: j.imdbID,
-    url: j.imdbID ? `https://www.imdb.com/title/${j.imdbID}/` : null,
-  };
-}
-
-async function omdb(params, key) {
-  const r = await fetch(
-    `https://www.omdbapi.com/?apikey=${encodeURIComponent(key)}&${params}`
-  );
-  if (!r.ok) return null;
-  const j = await r.json();
-  return j.Response === "True" ? j : null;
-}
-
-async function getImdb(title, year, key) {
-  const t = `t=${encodeURIComponent(title)}`;
-  let j = await omdb(year ? `${t}&y=${year}` : t, key);
-  if (!j && year) j = await omdb(t, key); // retry without year
-  return j ? imdbObj(j) : null;
+// Key-free fallback: guess the slug from the title. Best-effort only.
+async function lbFromTitleGuess(title) {
+  const base = slugify(title);
+  if (!base) return null;
+  const cands = base.startsWith("the-")
+    ? [base, base.slice(4)]
+    : [base, "the-" + base];
+  for (const c of cands) {
+    const d = await lbFilmFromUrl(`https://letterboxd.com/film/${c}/`).catch(
+      () => null
+    );
+    if (d && d.rating) return d;
+  }
+  return null;
 }
 
 // ---- main ----
@@ -174,12 +178,24 @@ async function handle(msg) {
     const year = film.year;
     const { imdbKey, enableImdb } = await getSettings();
 
-    const [lb, imdb] = await Promise.all([
-      getLetterboxd(title).catch(() => null),
-      enableImdb && imdbKey
-        ? getImdb(title, year, imdbKey).catch(() => null)
-        : Promise.resolve(null),
-    ]);
+    // OMDb resolves the IMDb id (used for an exact Letterboxd match) + IMDb rating.
+    const omdb = imdbKey ? await getOmdb(title, year, imdbKey).catch(() => null) : null;
+
+    let lb = null;
+    if (omdb && omdb.imdbID) lb = await lbFromImdb(omdb.imdbID).catch(() => null);
+    if (!lb) lb = await lbFromTitleGuess(title).catch(() => null);
+
+    const imdb =
+      enableImdb && omdb && omdb.rating
+        ? {
+            rating: omdb.rating,
+            votes: omdb.votes,
+            id: omdb.imdbID,
+            url: omdb.imdbID
+              ? `https://www.imdb.com/title/${omdb.imdbID}/`
+              : null,
+          }
+        : null;
 
     const result = { ts: Date.now(), title, year, lb, imdb };
     await cacheSet(slug, result);

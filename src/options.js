@@ -19,3 +19,14 @@ document.getElementById("save").addEventListener("click", () => {
     }
   );
 });
+
+const clearStatus = document.getElementById("clearStatus");
+document.getElementById("clear").addEventListener("click", () => {
+  chrome.storage.local.clear(() => {
+    clearStatus.textContent = "Cache cleared — reload the cineville tab";
+    clearStatus.style.color = "#00964a";
+    clearStatus.style.fontWeight = "600";
+    clearStatus.style.marginLeft = "12px";
+    setTimeout(() => (clearStatus.textContent = ""), 2500);
+  });
+});
