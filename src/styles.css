@@ -50,17 +50,15 @@
   border-color: #dcaf06;
 }
 
-/* release year (cineville hides it on the showtimes page) */
+/* release year (cineville hides it on the showtimes page) — kept subtle */
 .cvr-year {
   display: inline-flex;
   align-items: center;
-  padding: 2px 7px;
-  border-radius: 6px;
-  font-size: 12px;
-  font-weight: 600;
-  color: #555;
-  background: #ececed;
-  border: 1px solid #dedede;
+  font-size: 13px;
+  font-weight: 500;
+  color: #9b9b9b;
+  letter-spacing: 0.2px;
+  padding-right: 2px;
 }
 
 /* detail page: badge + synopsis under the title */

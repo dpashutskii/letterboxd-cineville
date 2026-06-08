@@ -99,7 +99,7 @@
       <label for="enableImdb">Show IMDb ratings</label>
     </div>
 
-    <label class="field" for="imdbKey">OMDb API key</label>
+    <label class="field" for="imdbKey">OMDb API key (IMDb ratings)</label>
     <input type="text" id="imdbKey" placeholder="e.g. 1a2b3c4d" autocomplete="off" />
     <p class="hint">
       Free key at
@@ -107,6 +107,20 @@
         >omdbapi.com</a
       >
       — remember to click the activation link in the email.
+    </p>
+
+    <label class="field" for="tmdbKey">TMDB API key (better matching)</label>
+    <input type="text" id="tmdbKey" placeholder="v3 API key" autocomplete="off" />
+    <p class="hint">
+      Free, instant key at
+      <a
+        href="https://www.themoviedb.org/settings/api"
+        target="_blank"
+        rel="noopener"
+        >themoviedb.org</a
+      >
+      (use the v3 "API Key"). Greatly improves matching for foreign/festival
+      films and adds synopses.
     </p>
 
     <div class="btns">

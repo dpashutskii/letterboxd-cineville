@@ -16,11 +16,17 @@ Each film gets a small badge, e.g. `★ 4.12   IMDb 7.8`, linking to the source 
   to CORS):
   1. Resolves the canonical **title + year** from cineville's own Next.js data
      endpoint (`/_next/data/{buildId}/{locale}/films/{slug}.json`).
-  2. **Letterboxd:** searches by title, then reads the average rating from the
-     film page's JSON-LD (`aggregateRating.ratingValue`, out of 5).
-  3. **IMDb:** queries the [OMDb API](https://www.omdbapi.com/) by title + year.
+  2. **Finds the exact film.** Letterboxd's `/search/` endpoint is bot-blocked,
+     so matching goes by id instead, best matcher first:
+     [TMDB](https://www.themoviedb.org/) search → `letterboxd.com/tmdb/{id}/`,
+     then OMDb's IMDb id → `letterboxd.com/imdb/{id}/`, then a year-validated
+     slug guess. All matches are sanity-checked against the release year.
+  3. **Letterboxd rating** is read from the resolved film page's JSON-LD
+     (`aggregateRating.ratingValue`, out of 5); the **IMDb rating** comes from
+     the [OMDb API](https://www.omdbapi.com/); the **synopsis** (detail pages)
+     comes from TMDB's overview or Letterboxd's `og:description`.
   4. Caches results in `chrome.storage.local` (7 days for hits, 1 day for misses)
-     to stay fast and avoid hammering Letterboxd.
+     to stay fast and avoid hammering the sources.
 
 ## Install (load unpacked)
 
@@ -29,22 +35,27 @@ Each film gets a small badge, e.g. `★ 4.12   IMDb 7.8`, linking to the source 
 3. Click **Load unpacked** and select this folder.
 4. Visit https://cineville.nl/en-GB/showtimes — badges appear under film titles.
 
-## Enabling IMDb ratings (optional)
+## API keys (open the popup — click the toolbar icon)
 
-Letterboxd works with no setup. For IMDb:
+Both keys are free, stored only in your browser, and never committed to this repo.
+A basic Letterboxd match works without any key, but the keys make it far more
+reliable.
 
-1. Get a free OMDb API key: https://www.omdbapi.com/apikey.aspx (1,000 req/day).
-   You'll get an activation email — click the link to activate the key.
-2. Right-click the extension → **Options** (or `chrome://extensions` → Details →
-   Extension options).
-3. Paste the key, tick **Show IMDb ratings**, and Save.
+- **TMDB (recommended)** — greatly improves matching for foreign/festival films
+  and supplies synopses. Get a v3 "API Key" at
+  https://www.themoviedb.org/settings/api (instant, no email step).
+- **OMDb (for IMDb ratings)** — get a free key at
+  https://www.omdbapi.com/apikey.aspx (1,000 req/day) and **click the activation
+  link in the email**. Then tick **Show IMDb ratings**.
 
-The key is stored in your browser only and is never committed to this repo.
+Paste the keys in the popup and click **Save** (then **Clear cache** + reload the
+tab to refresh existing results).
 
 ## Limitations & notes
 
-- **Matching** uses the cineville title + release year. Most films match; very
-  obscure festival titles may miss or occasionally mismatch.
+- **Matching** uses the cineville title + release year and is validated against
+  the release year to avoid same-named films. Titles in neither TMDB nor IMDb
+  will show the year only, with no rating.
 - **Letterboxd has no public API** for this use case, so ratings are scraped from
   public pages. This is against Letterboxd's ToS, so this extension is intended for
   personal use and is **not** suitable for the Chrome Web Store as-is.
@@ -54,9 +65,9 @@ The key is stored in your browser only and is never committed to this repo.
 ## Project layout
 
 ```
-manifest.json        # MV3 manifest, host permissions, content script registration
-src/content.js       # finds film links, injects badges
-src/background.js     # service worker: cineville + Letterboxd + OMDb lookups, cache
-src/styles.css        # badge styling
-src/options.html/.js  # OMDb key + IMDb toggle
+manifest.json     # MV3 manifest, host permissions, content script registration
+src/content.js    # finds film links, injects badges + year, detail-page synopsis
+src/background.js  # service worker: cineville + TMDB + Letterboxd + OMDb, cache
+src/styles.css     # badge styling
+src/popup.html/.js # settings popup: TMDB + OMDb keys, IMDb toggle, clear cache
 ```

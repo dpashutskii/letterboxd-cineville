@@ -49,8 +49,12 @@ async function cacheSet(slug, v) {
 
 // ---- settings ----
 async function getSettings() {
-  const o = await chrome.storage.sync.get(["imdbKey", "enableImdb"]);
-  return { imdbKey: o.imdbKey || "", enableImdb: o.enableImdb !== false };
+  const o = await chrome.storage.sync.get(["imdbKey", "enableImdb", "tmdbKey"]);
+  return {
+    imdbKey: o.imdbKey || "",
+    enableImdb: o.enableImdb !== false,
+    tmdbKey: o.tmdbKey || "",
+  };
 }
 
 // ---- helpers ----
@@ -148,6 +152,44 @@ async function getOmdb(title, year, key) {
   };
 }
 
+// ---- TMDB (best matcher for foreign / festival films) ----
+async function tmdbSearch(title, year, key) {
+  const u = new URL("https://api.themoviedb.org/3/search/movie");
+  u.searchParams.set("api_key", key);
+  u.searchParams.set("query", title);
+  u.searchParams.set("include_adult", "false");
+  if (year) u.searchParams.set("year", year);
+  const r = await fetch(u);
+  if (!r.ok) return null;
+  const j = await r.json();
+  const results = (j && j.results) || [];
+  if (!results.length) return null;
+
+  const yearOf = (x) => parseInt((x.release_date || "").slice(0, 4), 10);
+  let best;
+  if (year) {
+    // require a year-consistent result, else treat as no match (accuracy first)
+    best = results.find((x) => {
+      const ry = yearOf(x);
+      return !Number.isNaN(ry) && Math.abs(ry - year) <= 1;
+    });
+    if (!best) return null;
+  } else {
+    best = results[0];
+  }
+  return {
+    id: best.id,
+    title: best.title,
+    year: yearOf(best) || null,
+    overview: (best.overview || "").trim() || null,
+  };
+}
+
+async function lbFromTmdb(tmdbId) {
+  // id-based redirect, so authoritative — no year check needed
+  return lbFilmFromUrl(`https://letterboxd.com/tmdb/${tmdbId}/`);
+}
+
 // ---- Letterboxd (scrape JSON-LD from a film page) ----
 async function lbFilmFromUrl(url) {
   const r = await fetch(url, { credentials: "omit" });
@@ -223,14 +265,28 @@ async function handle(msg) {
     const film = await getCinevilleFilm(slug, buildId, locale);
     const title = cleanTitle(film.title);
     const year = film.year;
-    const { imdbKey, enableImdb } = await getSettings();
+    const { imdbKey, enableImdb, tmdbKey } = await getSettings();
 
-    // OMDb resolves the IMDb id (used for an exact Letterboxd match) + IMDb rating.
+    // OMDb supplies the IMDb rating (and an imdbID we can fall back on).
     const omdb = imdbKey ? await getOmdb(title, year, imdbKey).catch(() => null) : null;
 
+    // Letterboxd resolution, best matcher first:
+    //   1. TMDB id  -> /tmdb/  (great for foreign/festival films)
+    //   2. IMDb id  -> /imdb/  (from OMDb)
+    //   3. slugified-title guess (year-validated)
     let lb = null;
-    if (omdb && omdb.imdbID) lb = await lbFromImdb(omdb.imdbID).catch(() => null);
+    let description = null;
+    if (tmdbKey) {
+      const tm = await tmdbSearch(title, year, tmdbKey).catch(() => null);
+      if (tm) {
+        lb = await lbFromTmdb(tm.id).catch(() => null);
+        if (tm.overview) description = tm.overview;
+      }
+    }
+    if (!lb && omdb && omdb.imdbID) lb = await lbFromImdb(omdb.imdbID).catch(() => null);
     if (!lb) lb = await lbFromTitleGuess(title, year).catch(() => null);
+
+    if (lb) lb.description = description || lb.description || null;
 
     const imdb =
       enableImdb && omdb && omdb.rating
