@@ -30,41 +30,56 @@ function slugFromHref(href) {
 function makeBadge() {
   const b = document.createElement("span");
   b.className = "cvr-badge cvr-loading";
-  b.textContent = "…";
+  b.textContent = "···";
   return b;
+}
+
+// A rating chip is a real link, but we stop the click from bubbling so it never
+// triggers the surrounding cineville card link.
+function chip(kind, label, href, title) {
+  const a = document.createElement("a");
+  a.className = "cvr-chip cvr-" + kind;
+  a.href = href || "#";
+  a.target = "_blank";
+  a.rel = "noopener noreferrer";
+  a.title = title;
+  a.textContent = label;
+  a.addEventListener("click", (e) => e.stopPropagation());
+  return a;
 }
 
 function render(badge, data) {
   badge.classList.remove("cvr-loading");
-  const parts = [];
+  badge.textContent = "";
+  const chips = [];
   if (data && data.lb && data.lb.rating) {
     const count = data.lb.count ? Number(data.lb.count).toLocaleString() : "?";
-    const a = document.createElement("a");
-    a.className = "cvr-lb";
-    a.href = data.lb.url;
-    a.target = "_blank";
-    a.rel = "noopener";
-    a.title = `Letterboxd ${data.lb.rating}/5 — ${count} ratings`;
-    a.textContent = `★ ${data.lb.rating}`;
-    parts.push(a);
+    chips.push(
+      chip(
+        "lb",
+        `★ ${data.lb.rating}`,
+        data.lb.url,
+        `Letterboxd — ${data.lb.rating}/5 from ${count} ratings`
+      )
+    );
   }
   if (data && data.imdb && data.imdb.rating) {
-    const a = document.createElement("a");
-    a.className = "cvr-imdb";
-    a.href = data.imdb.url;
-    a.target = "_blank";
-    a.rel = "noopener";
-    a.title = `IMDb ${data.imdb.rating}/10`;
-    a.textContent = `IMDb ${data.imdb.rating}`;
-    parts.push(a);
+    chips.push(
+      chip(
+        "imdb",
+        `IMDb ${data.imdb.rating}`,
+        data.imdb.url,
+        `IMDb — ${data.imdb.rating}/10`
+      )
+    );
   }
-  badge.textContent = "";
-  if (parts.length === 0) {
+  if (chips.length === 0) {
     badge.classList.add("cvr-empty");
-    badge.textContent = "no rating";
+    badge.textContent = "–";
+    badge.title = "No Letterboxd/IMDb rating found";
     return;
   }
-  parts.forEach((p) => badge.appendChild(p));
+  chips.forEach((c) => badge.appendChild(c));
 }
 
 function process(link) {

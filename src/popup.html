@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Cineville Ratings</title>
+    <style>
+      :root {
+        --green: #00a430;
+      }
+      body {
+        width: 300px;
+        margin: 0;
+        padding: 16px;
+        font-family: system-ui, -apple-system, sans-serif;
+        color: #1a1a1a;
+      }
+      h1 {
+        font-size: 15px;
+        margin: 0;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+      }
+      p.hint {
+        font-size: 11.5px;
+        color: #666;
+        margin: 6px 0 0;
+        line-height: 1.45;
+      }
+      label.field {
+        display: block;
+        font-weight: 600;
+        font-size: 12px;
+        margin: 14px 0 5px;
+      }
+      input[type="text"] {
+        width: 100%;
+        box-sizing: border-box;
+        padding: 7px 9px;
+        font-size: 13px;
+        border: 1px solid #ccc;
+        border-radius: 7px;
+      }
+      .row {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        margin-top: 14px;
+      }
+      .row label {
+        font-size: 13px;
+        font-weight: 600;
+      }
+      .btns {
+        display: flex;
+        gap: 8px;
+        margin-top: 16px;
+      }
+      button {
+        flex: 1;
+        padding: 8px;
+        font-size: 13px;
+        font-weight: 600;
+        border-radius: 7px;
+        border: 1px solid #ccc;
+        background: #f6f6f6;
+        cursor: pointer;
+      }
+      button.primary {
+        background: var(--green);
+        color: #fff;
+        border-color: var(--green);
+      }
+      button:hover {
+        filter: brightness(0.96);
+      }
+      #status {
+        font-size: 12px;
+        color: var(--green);
+        font-weight: 600;
+        min-height: 16px;
+        margin-top: 10px;
+        text-align: center;
+      }
+      a {
+        color: #0a58ca;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>🎬 Cineville Ratings</h1>
+    <p class="hint">
+      Letterboxd works automatically. Add a free OMDb key for IMDb ratings and
+      more accurate Letterboxd matching.
+    </p>
+
+    <div class="row">
+      <input type="checkbox" id="enableImdb" />
+      <label for="enableImdb">Show IMDb ratings</label>
+    </div>
+
+    <label class="field" for="imdbKey">OMDb API key</label>
+    <input type="text" id="imdbKey" placeholder="e.g. 1a2b3c4d" autocomplete="off" />
+    <p class="hint">
+      Free key at
+      <a href="https://www.omdbapi.com/apikey.aspx" target="_blank" rel="noopener"
+        >omdbapi.com</a
+      >
+      — remember to click the activation link in the email.
+    </p>
+
+    <div class="btns">
+      <button id="save" class="primary">Save</button>
+      <button id="clear">Clear cache</button>
+    </div>
+    <div id="status"></div>
+
+    <script src="popup.js"></script>
+  </body>
+</html>

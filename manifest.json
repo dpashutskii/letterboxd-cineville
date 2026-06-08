@@ -20,8 +20,9 @@
       "run_at": "document_idle"
     }
   ],
-  "options_page": "src/options.html",
+  "options_page": "src/popup.html",
   "action": {
-    "default_title": "Cineville Ratings"
+    "default_title": "Cineville Ratings",
+    "default_popup": "src/popup.html"
   }
 }

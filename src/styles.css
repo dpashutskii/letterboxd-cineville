@@ -1,41 +1,62 @@
 .cvr-badge {
   display: inline-flex;
   flex-wrap: wrap;
-  gap: 8px;
+  gap: 6px;
   align-items: center;
-  margin: 4px 0 0;
-  font-size: 12px;
-  font-weight: 700;
-  line-height: 1.5;
+  margin-left: 10px;
   vertical-align: middle;
-}
-
-.cvr-badge a {
-  text-decoration: none;
-  padding: 1px 6px;
-  border-radius: 6px;
-  background: rgba(0, 0, 0, 0.06);
+  font-family: ui-sans-serif, system-ui, -apple-system, sans-serif;
   white-space: nowrap;
 }
 
-.cvr-badge a:hover {
-  text-decoration: underline;
+/* clickable rating pills */
+.cvr-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 9px;
+  border-radius: 999px;
+  font-size: 12.5px;
+  font-weight: 700;
+  line-height: 1;
+  text-decoration: none;
+  cursor: pointer;
+  transition: transform 0.12s ease, box-shadow 0.12s ease, filter 0.12s ease;
+}
+
+.cvr-chip:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
+  filter: brightness(0.97);
 }
 
 .cvr-lb {
-  color: #00b020;
+  background: #e7f9ee;
+  color: #00a430;
 }
 
 .cvr-imdb {
-  color: #b8860b;
+  background: #f5c518; /* IMDb yellow */
+  color: #111;
 }
 
+/* loading + empty states stay subtle */
 .cvr-badge.cvr-loading {
-  opacity: 0.45;
-  font-weight: 400;
+  margin-left: 10px;
+  color: #aaa;
+  font-weight: 700;
+  letter-spacing: 1px;
+  opacity: 0.6;
+  animation: cvr-pulse 1s ease-in-out infinite;
 }
 
 .cvr-badge.cvr-empty {
-  opacity: 0.4;
+  color: #bbb;
   font-weight: 400;
+  font-size: 13px;
+}
+
+@keyframes cvr-pulse {
+  0%, 100% { opacity: 0.35; }
+  50% { opacity: 0.7; }
 }
