@@ -1,0 +1,27 @@
+{
+  "manifest_version": 3,
+  "name": "Cineville Ratings — Letterboxd + IMDb",
+  "version": "0.1.0",
+  "description": "Overlays Letterboxd and (optional) IMDb ratings onto cineville.nl showtimes and film pages.",
+  "permissions": ["storage"],
+  "host_permissions": [
+    "https://cineville.nl/*",
+    "https://letterboxd.com/*",
+    "https://www.omdbapi.com/*"
+  ],
+  "background": {
+    "service_worker": "src/background.js"
+  },
+  "content_scripts": [
+    {
+      "matches": ["https://cineville.nl/*"],
+      "js": ["src/content.js"],
+      "css": ["src/styles.css"],
+      "run_at": "document_idle"
+    }
+  ],
+  "options_page": "src/options.html",
+  "action": {
+    "default_title": "Cineville Ratings"
+  }
+}

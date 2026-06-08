@@ -1,0 +1,41 @@
+.cvr-badge {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  margin: 4px 0 0;
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1.5;
+  vertical-align: middle;
+}
+
+.cvr-badge a {
+  text-decoration: none;
+  padding: 1px 6px;
+  border-radius: 6px;
+  background: rgba(0, 0, 0, 0.06);
+  white-space: nowrap;
+}
+
+.cvr-badge a:hover {
+  text-decoration: underline;
+}
+
+.cvr-lb {
+  color: #00b020;
+}
+
+.cvr-imdb {
+  color: #b8860b;
+}
+
+.cvr-badge.cvr-loading {
+  opacity: 0.45;
+  font-weight: 400;
+}
+
+.cvr-badge.cvr-empty {
+  opacity: 0.4;
+  font-weight: 400;
+}
