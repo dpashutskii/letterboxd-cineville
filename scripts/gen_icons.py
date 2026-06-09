@@ -1,11 +1,11 @@
-"""Generate the extension icons (16/48/128) — a Letterboxd-green star on a dark
-rounded square. Run via the venv created in scripts/package notes."""
+"""Generate the extension icons (16/48/128) — a white star on a Cineville-coral
+rounded square. Run inside a venv with Pillow installed."""
 import math
 import os
 from PIL import Image, ImageDraw
 
-DARK = (20, 24, 28, 255)      # Letterboxd dark
-GREEN = (0, 224, 84, 255)     # Letterboxd green
+CORAL = (232, 85, 63, 255)    # Cineville coral accent
+WHITE = (255, 255, 255, 255)
 OUT = os.path.join(os.path.dirname(__file__), "..", "icons")
 
 
@@ -22,9 +22,9 @@ def make(size):
     s = size * 4  # supersample for crisp edges
     img = Image.new("RGBA", (s, s), (0, 0, 0, 0))
     d = ImageDraw.Draw(img)
-    d.rounded_rectangle([0, 0, s - 1, s - 1], radius=int(s * 0.22), fill=DARK)
+    d.rounded_rectangle([0, 0, s - 1, s - 1], radius=int(s * 0.22), fill=CORAL)
     pts = star_points(s / 2, s / 2 * 1.04, s * 0.34, s * 0.155)
-    d.polygon(pts, fill=GREEN)
+    d.polygon(pts, fill=WHITE)
     return img.resize((size, size), Image.LANCZOS)
 
 
