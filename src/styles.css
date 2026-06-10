@@ -89,6 +89,19 @@
   color: #067a36;
 }
 
+/* listing/showtimes: truncated synopsis at the bottom of the text column */
+.cvr-desc-sm {
+  margin: 8px 0 0;
+  max-width: 60ch;
+  font-size: 13px;
+  line-height: 1.45;
+  color: #6b6b6b;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
 /* loading + empty states stay subtle */
 .cvr-badge.cvr-loading {
   color: #aaa;

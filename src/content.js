@@ -124,7 +124,22 @@ function process(link) {
       return;
     }
     render(badge, data, { withYear: true });
+    const text = data.lb && data.lb.description;
+    if (text) addListDescription(card, link, text);
   });
+}
+
+// Append a truncated synopsis at the bottom of the card's text column.
+function addListDescription(card, link, text) {
+  const heading =
+    card.querySelector("h1, h2, h3, h4, h5") ||
+    link.closest("h1, h2, h3, h4, h5");
+  const column = (heading && heading.parentElement) || null;
+  if (!column || column.querySelector(":scope > .cvr-desc-sm")) return;
+  const p = document.createElement("p");
+  p.className = "cvr-desc-sm";
+  p.textContent = text;
+  column.appendChild(p);
 }
 
 function scan(root) {
