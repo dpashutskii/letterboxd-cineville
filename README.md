@@ -1,5 +1,7 @@
 # Cineville Ratings — Letterboxd + IMDb
 
+[![Buy Me a Coffee](https://img.shields.io/badge/Buy%20Me%20a%20Coffee-support-FFDD00?logo=buymeacoffee&logoColor=black)](https://buymeacoffee.com/dpashutskii)
+
 A Chrome (Manifest V3) extension that overlays **Letterboxd** and optional **IMDb**
 ratings onto [cineville.nl](https://cineville.nl) — including the
 [showtimes](https://cineville.nl/en-GB/showtimes) page, film listings, and film
