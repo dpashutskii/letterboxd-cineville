@@ -215,3 +215,20 @@ function onNav() {
   };
 });
 window.addEventListener("popstate", onNav);
+
+// Cineville's clickable cards hijack Cmd/Ctrl/middle-clicks into same-tab
+// navigation, so you can't open several films at once. Intercept those clicks
+// in the capture phase and open a new tab ourselves.
+function openInNewTab(e) {
+  const wantNewTab = e.metaKey || e.ctrlKey || e.button === 1;
+  if (!wantNewTab) return;
+  if (e.target.closest && e.target.closest(".cvr-chip")) return; // our own links
+  const el = e.target.closest && e.target.closest('[href*="/films/"]');
+  const raw = el && el.getAttribute("href");
+  if (!raw) return;
+  e.preventDefault();
+  e.stopImmediatePropagation();
+  window.open(new URL(raw, location.origin).href, "_blank", "noopener");
+}
+document.addEventListener("click", openInNewTab, true);
+document.addEventListener("auxclick", openInNewTab, true);
