@@ -59,7 +59,9 @@ async function getSettings() {
 
 // ---- helpers ----
 function cleanTitle(t) {
-  return (t || "").replace(/\s*\((?:19|20)\d{2}\)\s*$/, "").trim();
+  // Drop trailing parentheticals cineville appends, e.g. "(re-release)",
+  // "(1984)", "(4K restoration)" — they break TMDB/OMDb title matching.
+  return (t || "").replace(/(?:\s*\([^)]*\))+\s*$/, "").trim();
 }
 
 function decodeEntities(s) {

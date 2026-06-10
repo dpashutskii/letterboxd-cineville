@@ -134,7 +134,12 @@ function addListDescription(card, link, text) {
   const heading =
     card.querySelector("h1, h2, h3, h4, h5") ||
     link.closest("h1, h2, h3, h4, h5");
-  const column = (heading && heading.parentElement) || null;
+  if (!heading) return;
+  // The title sits in a <dd>; its parent is the text column that also holds the
+  // venue/specials. Append there so the synopsis lands below them, not under the
+  // title. Fall back to the heading's parent on other layouts.
+  const ddWrap = heading.closest("dd");
+  const column = (ddWrap && ddWrap.parentElement) || heading.parentElement;
   if (!column || column.querySelector(":scope > .cvr-desc-sm")) return;
   const p = document.createElement("p");
   p.className = "cvr-desc-sm";
