@@ -1,5 +1,7 @@
 # Cineville Ratings — Letterboxd + IMDb
 
+[![Chrome Web Store](https://img.shields.io/badge/Chrome_Web_Store-Install-4285F4?logo=googlechrome&logoColor=white)](https://chromewebstore.google.com/detail/cineville-ratings/palgcbdjlmmaopmjddbengbieaahoind)
+[![Version](https://img.shields.io/chrome-web-store/v/palgcbdjlmmaopmjddbengbieaahoind?label=version)](https://chromewebstore.google.com/detail/cineville-ratings/palgcbdjlmmaopmjddbengbieaahoind)
 [![Buy Me a Coffee](https://img.shields.io/badge/Buy_Me_a_Coffee-FFDD00?logo=buymeacoffee&logoColor=black)](https://buymeacoffee.com/dpashutskii)
 
 A Chrome (Manifest V3) extension that overlays **Letterboxd** and optional **IMDb**
@@ -8,6 +10,8 @@ ratings onto [cineville.nl](https://cineville.nl) — including the
 detail pages.
 
 Each film gets a small badge, e.g. `★ 4.12   IMDb 7.8`, linking to the source pages.
+
+![Cineville Ratings on the cineville.nl showtimes page](docs/screenshot.png)
 
 ## How it works
 
@@ -30,12 +34,19 @@ Each film gets a small badge, e.g. `★ 4.12   IMDb 7.8`, linking to the source 
   4. Caches results in `chrome.storage.local` (7 days for hits, 1 day for misses)
      to stay fast and avoid hammering the sources.
 
-## Install (load unpacked)
+## Install
+
+**[➜ Install from the Chrome Web Store](https://chromewebstore.google.com/detail/cineville-ratings/palgcbdjlmmaopmjddbengbieaahoind)** — the easy way.
+
+<details>
+<summary>Or load it unpacked (for development)</summary>
 
 1. Open `chrome://extensions`.
 2. Enable **Developer mode** (top right).
 3. Click **Load unpacked** and select this folder.
 4. Visit https://cineville.nl/en-GB/showtimes — badges appear under film titles.
+
+</details>
 
 ## API keys (open the popup — click the toolbar icon)
 
